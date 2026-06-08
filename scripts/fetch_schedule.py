@@ -25,42 +25,6 @@ DAY_START_HOUR = 6   # 6 AM
 DAY_END_HOUR   = 22  # 10 PM
 
 
-def login(session: requests.Session) -> bool:
-    email = os.environ["TFC_EMAIL"]
-    password = os.environ["TFC_PASSWORD"]
-
-    # Fetch login page to get CSRF token
-    r = session.get(f"{BASE_URL}/en/login")
-    r.raise_for_status()
-
-    from html.parser import HTMLParser
-
-    class TokenParser(HTMLParser):
-        token = None
-        def handle_starttag(self, tag, attrs):
-            attrs = dict(attrs)
-            if tag == "input" and attrs.get("name") == "authenticity_token":
-                self.token = attrs.get("value")
-
-    parser = TokenParser()
-    parser.feed(r.text)
-    if not parser.token:
-        print("ERROR: Could not find CSRF token on login page", file=sys.stderr)
-        return False
-
-    r = session.post(
-        f"{BASE_URL}/en/sessions",
-        data={
-            "authenticity_token": parser.token,
-            "person[login]": email,
-            "person[password]": password,
-        },
-        allow_redirects=True,
-    )
-    r.raise_for_status()
-    return "/en/login" not in r.url  # redirected away = success
-
-
 def fetch_gantt(session: requests.Session, date_ts: int) -> list:
     url = f"{BASE_URL}/listings/{LISTING}/tfc_calendars/ganttdata"
     r = session.get(url, params={"date": date_ts})
@@ -461,10 +425,6 @@ def build_html(bookings: list, today: datetime.datetime) -> str:
 def main():
     session = requests.Session()
     session.headers["User-Agent"] = "Mozilla/5.0 (kitchen-display-bot/1.0)"
-
-    if not login(session):
-        print("Login failed", file=sys.stderr)
-        sys.exit(1)
 
     now = datetime.datetime.now(tz=TZ)
     # Midnight local time as Unix seconds

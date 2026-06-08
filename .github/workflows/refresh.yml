@@ -25,9 +25,7 @@ jobs:
 
       - name: Fetch schedule and generate HTML
         env:
-          TFC_EMAIL:    ${{ secrets.SYNC_ID }}
-          TFC_PASSWORD: ${{ secrets.SYNC_KEY }}
-          OUTPUT_FILE:  index.html
+          OUTPUT_FILE: index.html
         run: python scripts/fetch_schedule.py
 
       - name: Deploy to GitHub Pages
