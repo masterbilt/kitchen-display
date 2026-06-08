@@ -24,14 +24,12 @@ jobs:
         run: pip install requests
 
       - name: Fetch schedule and generate HTML
-        env:
-          OUTPUT_FILE: index.html
         run: python scripts/fetch_schedule.py
 
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v4
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: .
+          publish_dir: dist
           publish_branch: gh-pages
-          include_files: index.html
+          force_orphan: true

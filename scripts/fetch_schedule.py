@@ -1,8 +1,4 @@
 #!/usr/bin/env python3
-import os
-import sys
-import json
-import time
 import datetime
 import requests
 from zoneinfo import ZoneInfo
@@ -11,7 +7,7 @@ LISTING = "7542-akron-food-works"
 BASE_URL = "https://app.thefoodcorridor.com"
 TZ = ZoneInfo("America/New_York")
 
-# Resources to show as rows (in display order), keyed by calendar name from API
+# Resources to show as rows, in display order
 SPACE_ORDER = [
     "Create Kitchen - WHOLE ROOM",
     "Create Kitchen - LEFT SIDE",
@@ -21,8 +17,15 @@ SPACE_ORDER = [
     "Warewashing/Cleanup Area",
 ]
 
-DAY_START_HOUR = 6   # 6 AM
-DAY_END_HOUR   = 22  # 10 PM
+# Display labels (shorter for TV)
+LABEL_MAP = {
+    "Create Kitchen - WHOLE ROOM": ("Create Kitchen", "Whole Room"),
+    "Create Kitchen - LEFT SIDE":  ("Create Kitchen", "Left Side"),
+    "Create Kitchen - RIGHT SIDE": ("Create Kitchen", "Right Side"),
+    "Elevate (Main) Kitchen":      ("Elevate Kitchen", "Main"),
+    "NEW Prep/Specialty Kitchen":  ("Prep / Specialty", "Kitchen"),
+    "Warewashing/Cleanup Area":    ("Warewashing", "Cleanup Area"),
+}
 
 
 def fetch_gantt(session: requests.Session, date_ts: int) -> list:
@@ -36,69 +39,71 @@ def ts_to_local(ms: int) -> datetime.datetime:
     return datetime.datetime.fromtimestamp(ms / 1000, tz=TZ)
 
 
-def pct(dt: datetime.datetime) -> float:
-    total_mins = (DAY_END_HOUR - DAY_START_HOUR) * 60
-    offset_mins = (dt.hour - DAY_START_HOUR) * 60 + dt.minute
-    return max(0.0, min(100.0, offset_mins / total_mins * 100))
+def hour_label(dt: datetime.datetime) -> str:
+    h12 = dt.hour % 12 or 12
+    suffix = "a" if dt.hour < 12 else "p"
+    return f"{h12}{suffix}"
 
 
-def build_html(bookings: list, today: datetime.datetime) -> str:
+def build_html(bookings: list, start_dt: datetime.datetime, end_dt: datetime.datetime, mode: str) -> str:
     # Build color map from resource definitions (empty title entries)
     color_map = {}
     for item in bookings:
         if not item["title"] and item["calendar"] not in color_map:
             color_map[item["calendar"]] = item["color"]
 
-    # Filter to actual bookings
-    events = [b for b in bookings if b["title"]]
+    total_seconds = (end_dt - start_dt).total_seconds()
+
+    def pct(dt: datetime.datetime) -> float:
+        offset = (dt - start_dt).total_seconds()
+        return max(0.0, min(100.0, offset / total_seconds * 100))
+
+    # Filter to bookings that overlap the window
+    events = []
+    for b in bookings:
+        if not b["title"]:
+            continue
+        ev_start = ts_to_local(b["startDate"])
+        ev_end = ts_to_local(b["endDate"])
+        if ev_end <= start_dt or ev_start >= end_dt:
+            continue
+        events.append((b, ev_start, ev_end))
 
     # Group by calendar
     by_cal: dict[str, list] = {s: [] for s in SPACE_ORDER}
-    for ev in events:
-        cal = ev["calendar"]
+    for b, ev_start, ev_end in events:
+        cal = b["calendar"]
         if cal in by_cal:
-            by_cal[cal].append(ev)
+            by_cal[cal].append((b, ev_start, ev_end))
 
-    weekday_str = today.strftime("%A")
-    date_str = today.strftime("%B %-d, %Y")
-    updated_str = datetime.datetime.now(tz=TZ).strftime("%-I:%M %p")
+    # Hour tick marks — iterate from start to end
+    hours = []
+    h = start_dt
+    while h <= end_dt:
+        hours.append(h)
+        h = h + datetime.timedelta(hours=1)
 
-    # Hour tick marks
-    hours = list(range(DAY_START_HOUR, DAY_END_HOUR + 1))
     hour_ticks = ""
-    for h in hours:
-        p = (h - DAY_START_HOUR) / (DAY_END_HOUR - DAY_START_HOUR) * 100
-        label = f"{h % 12 or 12}{'a' if h < 12 else 'p'}"
-        hour_ticks += f'<div class="tick" style="left:{p:.2f}%">{label}</div>\n'
-
-    # Display labels (shorter for TV)
-    label_map = {
-        "Create Kitchen - WHOLE ROOM": ("Create Kitchen", "Whole Room"),
-        "Create Kitchen - LEFT SIDE":  ("Create Kitchen", "Left Side"),
-        "Create Kitchen - RIGHT SIDE": ("Create Kitchen", "Right Side"),
-        "Elevate (Main) Kitchen":      ("Elevate Kitchen", "Main"),
-        "NEW Prep/Specialty Kitchen":  ("Prep / Specialty", "Kitchen"),
-        "Warewashing/Cleanup Area":    ("Warewashing", "Cleanup Area"),
-    }
+    for ht in hours:
+        p = (ht - start_dt).total_seconds() / total_seconds * 100
+        hour_ticks += f'<div class="tick" style="left:{p:.2f}%">{hour_label(ht)}</div>\n'
 
     # Rows
     rows_html = ""
     for space in SPACE_ORDER:
         evs = by_cal.get(space, [])
         color = color_map.get(space, "#2C5440")
-        line1, line2 = label_map.get(space, (space, ""))
+        line1, line2 = LABEL_MAP.get(space, (space, ""))
 
         blocks = ""
-        for ev in evs:
-            start_dt = ts_to_local(ev["startDate"])
-            end_dt   = ts_to_local(ev["endDate"])
-            left  = pct(start_dt)
-            right = pct(end_dt)
+        for b, ev_start, ev_end in evs:
+            left = pct(ev_start)
+            right = pct(ev_end)
             width = right - left
             if width <= 0:
                 continue
-            time_label = f"{start_dt.strftime('%-I:%M%p').lower()}–{end_dt.strftime('%-I:%M%p').lower()}"
-            title = ev["title"]
+            time_label = f"{ev_start.strftime('%-I:%M%p').lower()}–{ev_end.strftime('%-I:%M%p').lower()}"
+            title = b["title"]
             blocks += (
                 f'<div class="block" style="left:{left:.2f}%;width:{width:.2f}%;'
                 f'background:{color};box-shadow:0 6px 16px -8px {color}90">'
@@ -108,8 +113,8 @@ def build_html(bookings: list, today: datetime.datetime) -> str:
             )
 
         hour_lines = "".join(
-            f'<div class="hour-line" style="left:{((h-DAY_START_HOUR)/(DAY_END_HOUR-DAY_START_HOUR)*100):.2f}%"></div>'
-            for h in hours
+            f'<div class="hour-line" style="left:{((ht-start_dt).total_seconds()/total_seconds*100):.2f}%"></div>'
+            for ht in hours
         )
         rows_html += f"""
         <div class="row">
@@ -125,6 +130,25 @@ def build_html(bookings: list, today: datetime.datetime) -> str:
             {blocks if blocks else '<div class="empty">Open · no bookings</div>'}
           </div>
         </div>"""
+
+    updated_str = datetime.datetime.now(tz=TZ).strftime("%-I:%M %p")
+
+    if mode == "overnight":
+        eyebrow = "Akron Food Works · Tonight in the kitchen"
+        title_html = "Cooking<br><em>through the night.</em>"
+        meta_day = "Tonight"
+        # Date range: "Mon Jun 8 → Tue Jun 9"
+        same_year = start_dt.year == end_dt.year
+        meta_date = f"{start_dt.strftime('%a %b %-d')} → {end_dt.strftime('%a %b %-d')}"
+        if not same_year:
+            meta_date = f"{start_dt.strftime('%a %b %-d, %Y')} → {end_dt.strftime('%a %b %-d, %Y')}"
+        body_class = "overnight"
+    else:
+        eyebrow = "Akron Food Works · Today in the kitchen"
+        title_html = "What&rsquo;s cooking<br><em>today.</em>"
+        meta_day = start_dt.strftime("%A")
+        meta_date = start_dt.strftime("%B %-d, %Y")
+        body_class = "day"
 
     return f"""<!DOCTYPE html>
 <html lang="en">
@@ -167,6 +191,13 @@ def build_html(bookings: list, today: datetime.datetime) -> str:
     overflow: hidden;
     padding: clamp(20px, 2.2vw, 36px) clamp(24px, 3vw, 48px);
   }}
+  body.overnight {{
+    color: #F4EEDF;
+    background:
+      radial-gradient(1100px 500px at 88% -8%, rgba(217,164,65,.20), transparent 60%),
+      radial-gradient(900px 500px at -10% 110%, rgba(232,155,90,.10), transparent 55%),
+      var(--green-deep);
+  }}
 
   header {{
     display: flex;
@@ -186,11 +217,12 @@ def build_html(bookings: list, today: datetime.datetime) -> str:
     gap: 12px;
     margin-bottom: 10px;
   }}
+  body.overnight .eyebrow {{ color: var(--gold); }}
   .eyebrow::before {{
     content: "";
     width: 36px;
     height: 2px;
-    background: var(--amber);
+    background: currentColor;
     display: inline-block;
   }}
   h1 {{
@@ -201,11 +233,13 @@ def build_html(bookings: list, today: datetime.datetime) -> str:
     letter-spacing: -.02em;
     color: var(--green-deep);
   }}
+  body.overnight h1 {{ color: #FFFDF8; }}
   h1 em {{
     font-style: italic;
     font-weight: 500;
     color: var(--amber);
   }}
+  body.overnight h1 em {{ color: var(--gold); }}
   .meta {{
     text-align: right;
     font-family: var(--display);
@@ -217,6 +251,7 @@ def build_html(bookings: list, today: datetime.datetime) -> str:
     color: var(--green-deep);
     line-height: 1;
   }}
+  body.overnight .meta .day {{ color: #FFFDF8; }}
   .meta .date {{
     font-style: italic;
     font-weight: 500;
@@ -224,6 +259,7 @@ def build_html(bookings: list, today: datetime.datetime) -> str:
     color: var(--amber);
     margin-top: 6px;
   }}
+  body.overnight .meta .date {{ color: var(--gold); }}
   .meta .updated {{
     font-family: var(--body);
     font-size: clamp(.7rem, .8vw, .85rem);
@@ -233,6 +269,7 @@ def build_html(bookings: list, today: datetime.datetime) -> str:
     margin-top: 10px;
     font-weight: 600;
   }}
+  body.overnight .meta .updated {{ color: #CFC9BA; }}
 
   .schedule-card {{
     flex: 1;
@@ -245,6 +282,11 @@ def build_html(bookings: list, today: datetime.datetime) -> str:
     flex-direction: column;
     overflow: hidden;
   }}
+  body.overnight .schedule-card {{
+    background: rgba(255,253,248,.04);
+    border-color: rgba(255,253,248,.12);
+    box-shadow: 0 30px 60px -30px rgba(0,0,0,.5);
+  }}
 
   .hours-bar {{
     position: relative;
@@ -254,6 +296,7 @@ def build_html(bookings: list, today: datetime.datetime) -> str:
     flex-shrink: 0;
     border-bottom: 1px dashed var(--line);
   }}
+  body.overnight .hours-bar {{ border-bottom-color: rgba(255,253,248,.15); }}
   .tick {{
     position: absolute;
     transform: translateX(-50%);
@@ -263,6 +306,7 @@ def build_html(bookings: list, today: datetime.datetime) -> str:
     color: var(--ink-soft);
     bottom: 4px;
   }}
+  body.overnight .tick {{ color: #CFC9BA; }}
 
   .rows {{
     flex: 1;
@@ -292,9 +336,7 @@ def build_html(bookings: list, today: datetime.datetime) -> str:
     border-radius: 4px;
     flex-shrink: 0;
   }}
-  .label-text {{
-    line-height: 1.05;
-  }}
+  .label-text {{ line-height: 1.05; }}
   .label-1 {{
     font-family: var(--display);
     font-weight: 900;
@@ -302,6 +344,7 @@ def build_html(bookings: list, today: datetime.datetime) -> str:
     color: var(--green-deep);
     letter-spacing: -.01em;
   }}
+  body.overnight .label-1 {{ color: #FFFDF8; }}
   .label-2 {{
     font-family: var(--display);
     font-weight: 500;
@@ -310,6 +353,7 @@ def build_html(bookings: list, today: datetime.datetime) -> str:
     color: var(--amber);
     margin-top: 2px;
   }}
+  body.overnight .label-2 {{ color: var(--gold); }}
 
   .timeline {{
     flex: 1;
@@ -318,12 +362,17 @@ def build_html(bookings: list, today: datetime.datetime) -> str:
     border: 1px solid var(--line);
     border-radius: 12px;
   }}
+  body.overnight .timeline {{
+    background: rgba(255,253,248,.04);
+    border-color: rgba(255,253,248,.12);
+  }}
   .hour-line {{
     position: absolute;
     top: 0; bottom: 0;
     width: 1px;
     background: var(--line);
   }}
+  body.overnight .hour-line {{ background: rgba(255,253,248,.08); }}
   .block {{
     position: absolute;
     top: 6px;
@@ -369,6 +418,7 @@ def build_html(bookings: list, today: datetime.datetime) -> str:
     font-size: clamp(.85rem, 1.05vw, 1.1rem);
     color: var(--ink-soft);
   }}
+  body.overnight .empty {{ color: #CFC9BA; }}
 
   footer {{
     flex-shrink: 0;
@@ -383,6 +433,7 @@ def build_html(bookings: list, today: datetime.datetime) -> str:
     color: var(--green-deep);
     font-size: clamp(.95rem, 1.1vw, 1.15rem);
   }}
+  body.overnight footer .mark {{ color: #FFFDF8; }}
   footer .tag {{
     letter-spacing: .32em;
     text-transform: uppercase;
@@ -391,17 +442,18 @@ def build_html(bookings: list, today: datetime.datetime) -> str:
     font-weight: 600;
     margin-top: 4px;
   }}
+  body.overnight footer .tag {{ color: var(--gold); }}
 </style>
 </head>
-<body>
+<body class="{body_class}">
 <header>
   <div>
-    <div class="eyebrow">Akron Food Works · Today in the kitchen</div>
-    <h1>What&rsquo;s cooking<br><em>today.</em></h1>
+    <div class="eyebrow">{eyebrow}</div>
+    <h1>{title_html}</h1>
   </div>
   <div class="meta">
-    <div class="day">{weekday_str}</div>
-    <div class="date">{date_str}</div>
+    <div class="day">{meta_day}</div>
+    <div class="date">{meta_date}</div>
     <div class="updated">Updated {updated_str}</div>
   </div>
 </header>
@@ -422,23 +474,67 @@ def build_html(bookings: list, today: datetime.datetime) -> str:
 </html>"""
 
 
+def merge_bookings(*lists):
+    """Combine bookings from multiple days, de-duped by (calendar, title, startDate, endDate)."""
+    seen = set()
+    merged = []
+    for bookings in lists:
+        for b in bookings:
+            key = (b["calendar"], b["title"], b["startDate"], b["endDate"])
+            if key in seen:
+                continue
+            seen.add(key)
+            merged.append(b)
+    return merged
+
+
 def main():
+    import os
+    os.makedirs("dist", exist_ok=True)
+
     session = requests.Session()
     session.headers["User-Agent"] = "Mozilla/5.0 (kitchen-display-bot/1.0)"
 
     now = datetime.datetime.now(tz=TZ)
-    # Midnight local time as Unix seconds
-    midnight = datetime.datetime(now.year, now.month, now.day, tzinfo=TZ)
-    date_ts = int(midnight.timestamp())
+    today_midnight = datetime.datetime(now.year, now.month, now.day, tzinfo=TZ)
+    yesterday_midnight = today_midnight - datetime.timedelta(days=1)
 
-    data = fetch_gantt(session, date_ts)
+    # --- Day view: 6am–10pm today ---
+    today_data = fetch_gantt(session, int(today_midnight.timestamp()))
+    day_start = today_midnight + datetime.timedelta(hours=6)
+    day_end = today_midnight + datetime.timedelta(hours=22)
+    day_html = build_html(today_data, day_start, day_end, mode="day")
+    with open("dist/index.html", "w", encoding="utf-8") as f:
+        f.write(day_html)
+    print("Wrote dist/index.html")
 
-    html = build_html(data, now)
+    # --- Overnight view: 8pm–8am ---
+    # If we're already past midnight but before 8am, show the overnight that's in progress
+    if now.hour < 8:
+        overnight_start = yesterday_midnight + datetime.timedelta(hours=20)
+    else:
+        overnight_start = today_midnight + datetime.timedelta(hours=20)
+    overnight_end = overnight_start + datetime.timedelta(hours=12)
 
-    out = os.environ.get("OUTPUT_FILE", "index.html")
-    with open(out, "w", encoding="utf-8") as f:
-        f.write(html)
-    print(f"Wrote {out}")
+    start_day_midnight = overnight_start.replace(hour=0, minute=0, second=0, microsecond=0)
+    end_day_midnight = overnight_end.replace(hour=0, minute=0, second=0, microsecond=0)
+
+    overnight_lists = []
+    if start_day_midnight == today_midnight:
+        overnight_lists.append(today_data)
+    else:
+        overnight_lists.append(fetch_gantt(session, int(start_day_midnight.timestamp())))
+    if end_day_midnight != start_day_midnight:
+        if end_day_midnight == today_midnight:
+            overnight_lists.append(today_data)
+        else:
+            overnight_lists.append(fetch_gantt(session, int(end_day_midnight.timestamp())))
+
+    overnight_data = merge_bookings(*overnight_lists)
+    overnight_html = build_html(overnight_data, overnight_start, overnight_end, mode="overnight")
+    with open("dist/overnight.html", "w", encoding="utf-8") as f:
+        f.write(overnight_html)
+    print("Wrote dist/overnight.html")
 
 
 if __name__ == "__main__":
