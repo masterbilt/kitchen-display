@@ -38,7 +38,7 @@ def login(session: requests.Session) -> bool:
     password = os.environ["TFC_PASSWORD"]
 
     # Fetch login page to get CSRF token
-    r = session.get(f"{BASE_URL}/users/sign_in")
+    r = session.get(f"{BASE_URL}/en/login")
     r.raise_for_status()
 
     from html.parser import HTMLParser
@@ -57,17 +57,16 @@ def login(session: requests.Session) -> bool:
         return False
 
     r = session.post(
-        f"{BASE_URL}/users/sign_in",
+        f"{BASE_URL}/en/sessions",
         data={
             "authenticity_token": parser.token,
-            "user[email]": email,
-            "user[password]": password,
-            "user[remember_me]": "0",
+            "person[login]": email,
+            "person[password]": password,
         },
         allow_redirects=True,
     )
     r.raise_for_status()
-    return "sign_in" not in r.url  # redirected away = success
+    return "/en/login" not in r.url  # redirected away = success
 
 
 def fetch_gantt(session: requests.Session, date_ts: int) -> list:
