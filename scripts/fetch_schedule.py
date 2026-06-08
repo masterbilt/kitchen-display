@@ -95,7 +95,8 @@ def build_html(bookings: list, today: datetime.datetime) -> str:
         if cal in by_cal:
             by_cal[cal].append(ev)
 
-    date_str = today.strftime("%A, %B %-d, %Y")
+    weekday_str = today.strftime("%A")
+    date_str = today.strftime("%B %-d, %Y")
     updated_str = datetime.datetime.now(tz=TZ).strftime("%-I:%M %p")
 
     # Hour tick marks
@@ -103,14 +104,25 @@ def build_html(bookings: list, today: datetime.datetime) -> str:
     hour_ticks = ""
     for h in hours:
         p = (h - DAY_START_HOUR) / (DAY_END_HOUR - DAY_START_HOUR) * 100
-        label = f"{h % 12 or 12}{'am' if h < 12 else 'pm'}"
+        label = f"{h % 12 or 12}{'a' if h < 12 else 'p'}"
         hour_ticks += f'<div class="tick" style="left:{p:.2f}%">{label}</div>\n'
+
+    # Display labels (shorter for TV)
+    label_map = {
+        "Create Kitchen - WHOLE ROOM": ("Create Kitchen", "Whole Room"),
+        "Create Kitchen - LEFT SIDE":  ("Create Kitchen", "Left Side"),
+        "Create Kitchen - RIGHT SIDE": ("Create Kitchen", "Right Side"),
+        "Elevate (Main) Kitchen":      ("Elevate Kitchen", "Main"),
+        "NEW Prep/Specialty Kitchen":  ("Prep / Specialty", "Kitchen"),
+        "Warewashing/Cleanup Area":    ("Warewashing", "Cleanup Area"),
+    }
 
     # Rows
     rows_html = ""
     for space in SPACE_ORDER:
         evs = by_cal.get(space, [])
-        color = color_map.get(space, "#555")
+        color = color_map.get(space, "#2C5440")
+        line1, line2 = label_map.get(space, (space, ""))
 
         blocks = ""
         for ev in evs:
@@ -124,23 +136,29 @@ def build_html(bookings: list, today: datetime.datetime) -> str:
             time_label = f"{start_dt.strftime('%-I:%M%p').lower()}–{end_dt.strftime('%-I:%M%p').lower()}"
             title = ev["title"]
             blocks += (
-                f'<div class="block" style="left:{left:.2f}%;width:{width:.2f}%;background:{color}" '
-                f'title="{title} {time_label}">'
+                f'<div class="block" style="left:{left:.2f}%;width:{width:.2f}%;'
+                f'background:{color};box-shadow:0 6px 16px -8px {color}90">'
                 f'<span class="block-title">{title}</span>'
                 f'<span class="block-time">{time_label}</span>'
                 f'</div>\n'
             )
 
-        dot_color = color if evs else "#333"
+        hour_lines = "".join(
+            f'<div class="hour-line" style="left:{((h-DAY_START_HOUR)/(DAY_END_HOUR-DAY_START_HOUR)*100):.2f}%"></div>'
+            for h in hours
+        )
         rows_html += f"""
         <div class="row">
           <div class="label">
-            <span class="dot" style="background:{dot_color}"></span>
-            {space}
+            <span class="swatch" style="background:{color}"></span>
+            <div class="label-text">
+              <div class="label-1">{line1}</div>
+              <div class="label-2">{line2}</div>
+            </div>
           </div>
           <div class="timeline">
-            {"".join(f'<div class="hour-line" style="left:{((h-DAY_START_HOUR)/(DAY_END_HOUR-DAY_START_HOUR)*100):.2f}%"></div>' for h in hours)}
-            {blocks if blocks else '<div class="empty">No bookings</div>'}
+            {hour_lines}
+            {blocks if blocks else '<div class="empty">Open · no bookings</div>'}
           </div>
         </div>"""
 
@@ -151,108 +169,228 @@ def build_html(bookings: list, today: datetime.datetime) -> str:
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta http-equiv="refresh" content="900">
 <title>Akron Food Works — Kitchen Schedule</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;0,9..144,900;1,9..144,500&family=Hanken+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
+  :root {{
+    --cream: #FBF6EC;
+    --paper: #FFFDF8;
+    --ink: #23372B;
+    --ink-soft: #4A5A4E;
+    --green: #2C5440;
+    --green-deep: #1E3A2D;
+    --amber: #C8612E;
+    --amber-soft: #E89B5A;
+    --gold: #D9A441;
+    --line: #E2D9C6;
+    --shadow: 0 18px 40px -22px rgba(30,58,45,.45);
+    --display: 'Fraunces', Georgia, serif;
+    --body: 'Hanken Grotesk', system-ui, sans-serif;
+  }}
   *, *::before, *::after {{ box-sizing: border-box; margin: 0; padding: 0; }}
+  html, body {{ height: 100%; }}
   body {{
-    background: #0d0d0d;
-    color: #eee;
-    font-family: 'Segoe UI', Arial, sans-serif;
-    height: 100vh;
+    font-family: var(--body);
+    color: var(--ink);
+    background:
+      radial-gradient(1200px 600px at 85% -8%, rgba(217,164,65,.16), transparent 60%),
+      radial-gradient(900px 500px at -10% 110%, rgba(44,84,64,.12), transparent 55%),
+      var(--cream);
+    line-height: 1.5;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    padding: clamp(20px, 2.2vw, 36px) clamp(24px, 3vw, 48px);
+  }}
+
+  header {{
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    flex-shrink: 0;
+    margin-bottom: clamp(16px, 1.8vw, 28px);
+  }}
+  .eyebrow {{
+    font-size: clamp(.7rem, .9vw, .95rem);
+    letter-spacing: .32em;
+    text-transform: uppercase;
+    font-weight: 600;
+    color: var(--amber);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 10px;
+  }}
+  .eyebrow::before {{
+    content: "";
+    width: 36px;
+    height: 2px;
+    background: var(--amber);
+    display: inline-block;
+  }}
+  h1 {{
+    font-family: var(--display);
+    font-weight: 900;
+    font-size: clamp(2.4rem, 4.4vw, 4.4rem);
+    line-height: .98;
+    letter-spacing: -.02em;
+    color: var(--green-deep);
+  }}
+  h1 em {{
+    font-style: italic;
+    font-weight: 500;
+    color: var(--amber);
+  }}
+  .meta {{
+    text-align: right;
+    font-family: var(--display);
+    color: var(--ink-soft);
+  }}
+  .meta .day {{
+    font-weight: 900;
+    font-size: clamp(1.4rem, 2.2vw, 2.2rem);
+    color: var(--green-deep);
+    line-height: 1;
+  }}
+  .meta .date {{
+    font-style: italic;
+    font-weight: 500;
+    font-size: clamp(1rem, 1.3vw, 1.3rem);
+    color: var(--amber);
+    margin-top: 6px;
+  }}
+  .meta .updated {{
+    font-family: var(--body);
+    font-size: clamp(.7rem, .8vw, .85rem);
+    letter-spacing: .14em;
+    text-transform: uppercase;
+    color: var(--ink-soft);
+    margin-top: 10px;
+    font-weight: 600;
+  }}
+
+  .schedule-card {{
+    flex: 1;
+    background: var(--paper);
+    border: 1px solid var(--line);
+    border-radius: 18px;
+    box-shadow: var(--shadow);
+    padding: clamp(18px, 2vw, 28px) clamp(18px, 2vw, 28px) clamp(14px, 1.6vw, 22px);
     display: flex;
     flex-direction: column;
     overflow: hidden;
   }}
-  header {{
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 16px 28px 8px;
-    border-bottom: 1px solid #2a2a2a;
-    flex-shrink: 0;
-  }}
-  h1 {{ font-size: 2rem; font-weight: 700; letter-spacing: .5px; }}
-  .meta {{ text-align: right; font-size: 1rem; color: #888; }}
-  .meta .updated {{ font-size: .85rem; margin-top: 2px; }}
-  .schedule {{
-    flex: 1;
-    overflow-y: auto;
-    padding: 8px 28px 16px;
-  }}
+
   .hours-bar {{
-    display: flex;
-    margin-left: 260px;
     position: relative;
-    height: 22px;
-    margin-bottom: 4px;
+    margin-left: clamp(180px, 16vw, 280px);
+    height: 26px;
+    margin-bottom: 8px;
     flex-shrink: 0;
+    border-bottom: 1px dashed var(--line);
   }}
   .tick {{
     position: absolute;
     transform: translateX(-50%);
-    font-size: .75rem;
-    color: #555;
+    font-family: var(--display);
+    font-weight: 600;
+    font-size: clamp(.78rem, .95vw, 1rem);
+    color: var(--ink-soft);
+    bottom: 4px;
+  }}
+
+  .rows {{
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: clamp(8px, 1vw, 14px);
+    padding-top: 6px;
+    min-height: 0;
   }}
   .row {{
     display: flex;
-    align-items: center;
-    margin-bottom: 6px;
-    min-height: 48px;
+    align-items: stretch;
+    flex: 1;
+    min-height: 0;
   }}
   .label {{
-    width: 260px;
-    min-width: 260px;
-    font-size: .9rem;
-    line-height: 1.2;
-    padding-right: 12px;
+    width: clamp(180px, 16vw, 280px);
+    min-width: clamp(180px, 16vw, 280px);
     display: flex;
     align-items: center;
-    gap: 8px;
-    color: #ccc;
+    gap: 14px;
+    padding-right: 16px;
   }}
-  .dot {{
-    width: 10px;
-    height: 10px;
-    border-radius: 50%;
+  .swatch {{
+    width: 8px;
+    align-self: stretch;
+    border-radius: 4px;
     flex-shrink: 0;
   }}
+  .label-text {{
+    line-height: 1.05;
+  }}
+  .label-1 {{
+    font-family: var(--display);
+    font-weight: 900;
+    font-size: clamp(1.1rem, 1.5vw, 1.55rem);
+    color: var(--green-deep);
+    letter-spacing: -.01em;
+  }}
+  .label-2 {{
+    font-family: var(--display);
+    font-weight: 500;
+    font-style: italic;
+    font-size: clamp(.85rem, 1.1vw, 1.15rem);
+    color: var(--amber);
+    margin-top: 2px;
+  }}
+
   .timeline {{
     flex: 1;
     position: relative;
-    height: 44px;
-    background: #1a1a1a;
-    border-radius: 4px;
+    background: var(--cream);
+    border: 1px solid var(--line);
+    border-radius: 12px;
   }}
   .hour-line {{
     position: absolute;
     top: 0; bottom: 0;
     width: 1px;
-    background: #2a2a2a;
+    background: var(--line);
   }}
   .block {{
     position: absolute;
-    top: 4px;
-    bottom: 4px;
-    border-radius: 4px;
+    top: 6px;
+    bottom: 6px;
+    border-radius: 10px;
     display: flex;
     flex-direction: column;
     justify-content: center;
-    padding: 0 8px;
+    padding: 6px 14px;
     overflow: hidden;
-    min-width: 2px;
-    cursor: default;
+    min-width: 4px;
+    color: #FFFDF8;
   }}
   .block-title {{
-    font-size: .82rem;
-    font-weight: 600;
+    font-family: var(--display);
+    font-weight: 900;
+    font-size: clamp(1rem, 1.35vw, 1.45rem);
+    line-height: 1.05;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-    color: #fff;
-    text-shadow: 0 1px 2px rgba(0,0,0,.5);
+    letter-spacing: -.01em;
+    text-shadow: 0 1px 2px rgba(0,0,0,.25);
   }}
   .block-time {{
-    font-size: .7rem;
-    color: rgba(255,255,255,.8);
+    font-family: var(--body);
+    font-weight: 600;
+    font-size: clamp(.75rem, .95vw, 1rem);
+    letter-spacing: .02em;
+    color: rgba(255,253,248,.92);
+    margin-top: 2px;
     white-space: nowrap;
   }}
   .empty {{
@@ -260,32 +398,62 @@ def build_html(bookings: list, today: datetime.datetime) -> str:
     inset: 0;
     display: flex;
     align-items: center;
-    padding-left: 10px;
-    color: #333;
-    font-size: .8rem;
+    padding-left: 16px;
+    font-family: var(--display);
+    font-style: italic;
+    font-weight: 500;
+    font-size: clamp(.85rem, 1.05vw, 1.1rem);
+    color: var(--ink-soft);
   }}
+
   footer {{
-    text-align: center;
-    font-size: .75rem;
-    color: #333;
-    padding: 6px;
     flex-shrink: 0;
+    text-align: center;
+    margin-top: clamp(14px, 1.6vw, 22px);
+    color: var(--ink-soft);
+  }}
+  footer .mark {{
+    font-family: var(--display);
+    font-weight: 900;
+    letter-spacing: .12em;
+    color: var(--green-deep);
+    font-size: clamp(.95rem, 1.1vw, 1.15rem);
+  }}
+  footer .tag {{
+    letter-spacing: .32em;
+    text-transform: uppercase;
+    font-size: clamp(.65rem, .75vw, .8rem);
+    color: var(--amber);
+    font-weight: 600;
+    margin-top: 4px;
   }}
 </style>
 </head>
 <body>
 <header>
-  <h1>Akron Food Works — Kitchen Schedule</h1>
+  <div>
+    <div class="eyebrow">Akron Food Works · Today in the kitchen</div>
+    <h1>What&rsquo;s cooking<br><em>today.</em></h1>
+  </div>
   <div class="meta">
-    <div>{date_str}</div>
-    <div class="updated">Updated {updated_str} &bull; refreshes every 15 min</div>
+    <div class="day">{weekday_str}</div>
+    <div class="date">{date_str}</div>
+    <div class="updated">Updated {updated_str}</div>
   </div>
 </header>
-<div class="schedule">
+
+<div class="schedule-card">
   <div class="hours-bar">{hour_ticks}</div>
-  {rows_html}
+  <div class="rows">
+    {rows_html}
+  </div>
 </div>
-<footer>thefoodcorridor.com &bull; auto-generated</footer>
+
+<footer>
+  <div class="mark">AKRON FOOD WORKS</div>
+  <div class="tag">Create · Incubate · Elevate</div>
+</footer>
+
 </body>
 </html>"""
 
