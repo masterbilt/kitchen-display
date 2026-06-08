@@ -19,14 +19,6 @@ SPACE_ORDER = [
     "Elevate (Main) Kitchen",
     "NEW Prep/Specialty Kitchen",
     "Warewashing/Cleanup Area",
-    "Market/Event Kit",
-    "Refrigerator - Market/Event",
-    "Portable 4-Compartment Sink",
-    "Hand Wash Only Portable Sink",
-    "Induction Cookware & Cooktops (Prep Kitchen)",
-    "Deep Fryer (Create Kitchen)",
-    "Deli Slicer",
-    "Schedule time with Akron Food Works Staff",
 ]
 
 DAY_START_HOUR = 6   # 6 AM
