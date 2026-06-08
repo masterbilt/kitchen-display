@@ -189,7 +189,7 @@ def build_html(bookings: list, start_dt: datetime.datetime, end_dt: datetime.dat
     display: flex;
     flex-direction: column;
     overflow: hidden;
-    padding: clamp(20px, 2.2vw, 36px) clamp(24px, 3vw, 48px);
+    padding: clamp(10px, 1.2vw, 20px) clamp(14px, 1.8vw, 28px);
   }}
   body.overnight {{
     color: #F4EEDF;
@@ -204,18 +204,18 @@ def build_html(bookings: list, start_dt: datetime.datetime, end_dt: datetime.dat
     justify-content: space-between;
     align-items: flex-end;
     flex-shrink: 0;
-    margin-bottom: clamp(16px, 1.8vw, 28px);
+    margin-bottom: clamp(8px, 1vw, 16px);
   }}
   .eyebrow {{
-    font-size: clamp(.7rem, .9vw, .95rem);
-    letter-spacing: .32em;
+    font-size: clamp(.65rem, .8vw, .85rem);
+    letter-spacing: .3em;
     text-transform: uppercase;
     font-weight: 600;
     color: var(--amber);
     display: flex;
     align-items: center;
-    gap: 12px;
-    margin-bottom: 10px;
+    gap: 10px;
+    margin-bottom: 6px;
   }}
   body.overnight .eyebrow {{ color: var(--gold); }}
   .eyebrow::before {{
@@ -228,7 +228,7 @@ def build_html(bookings: list, start_dt: datetime.datetime, end_dt: datetime.dat
   h1 {{
     font-family: var(--display);
     font-weight: 900;
-    font-size: clamp(2.4rem, 4.4vw, 4.4rem);
+    font-size: clamp(1.6rem, 2.6vw, 2.6rem);
     line-height: .98;
     letter-spacing: -.02em;
     color: var(--green-deep);
@@ -247,7 +247,7 @@ def build_html(bookings: list, start_dt: datetime.datetime, end_dt: datetime.dat
   }}
   .meta .day {{
     font-weight: 900;
-    font-size: clamp(1.4rem, 2.2vw, 2.2rem);
+    font-size: clamp(1.1rem, 1.5vw, 1.6rem);
     color: var(--green-deep);
     line-height: 1;
   }}
@@ -255,18 +255,18 @@ def build_html(bookings: list, start_dt: datetime.datetime, end_dt: datetime.dat
   .meta .date {{
     font-style: italic;
     font-weight: 500;
-    font-size: clamp(1rem, 1.3vw, 1.3rem);
+    font-size: clamp(.8rem, 1vw, 1rem);
     color: var(--amber);
-    margin-top: 6px;
+    margin-top: 3px;
   }}
   body.overnight .meta .date {{ color: var(--gold); }}
   .meta .updated {{
     font-family: var(--body);
-    font-size: clamp(.7rem, .8vw, .85rem);
+    font-size: clamp(.6rem, .7vw, .75rem);
     letter-spacing: .14em;
     text-transform: uppercase;
     color: var(--ink-soft);
-    margin-top: 10px;
+    margin-top: 6px;
     font-weight: 600;
   }}
   body.overnight .meta .updated {{ color: #CFC9BA; }}
@@ -275,9 +275,9 @@ def build_html(bookings: list, start_dt: datetime.datetime, end_dt: datetime.dat
     flex: 1;
     background: var(--paper);
     border: 1px solid var(--line);
-    border-radius: 18px;
+    border-radius: 14px;
     box-shadow: var(--shadow);
-    padding: clamp(18px, 2vw, 28px) clamp(18px, 2vw, 28px) clamp(14px, 1.6vw, 22px);
+    padding: clamp(10px, 1.2vw, 18px) clamp(12px, 1.4vw, 20px) clamp(8px, 1vw, 14px);
     display: flex;
     flex-direction: column;
     overflow: hidden;
@@ -290,9 +290,9 @@ def build_html(bookings: list, start_dt: datetime.datetime, end_dt: datetime.dat
 
   .hours-bar {{
     position: relative;
-    margin-left: clamp(180px, 16vw, 280px);
-    height: 26px;
-    margin-bottom: 8px;
+    margin-left: clamp(150px, 13vw, 230px);
+    height: 20px;
+    margin-bottom: 4px;
     flex-shrink: 0;
     border-bottom: 1px dashed var(--line);
   }}
@@ -302,9 +302,9 @@ def build_html(bookings: list, start_dt: datetime.datetime, end_dt: datetime.dat
     transform: translateX(-50%);
     font-family: var(--display);
     font-weight: 600;
-    font-size: clamp(.78rem, .95vw, 1rem);
+    font-size: clamp(.65rem, .8vw, .85rem);
     color: var(--ink-soft);
-    bottom: 4px;
+    bottom: 2px;
   }}
   body.overnight .tick {{ color: #CFC9BA; }}
 
@@ -312,8 +312,8 @@ def build_html(bookings: list, start_dt: datetime.datetime, end_dt: datetime.dat
     flex: 1;
     display: flex;
     flex-direction: column;
-    gap: clamp(8px, 1vw, 14px);
-    padding-top: 6px;
+    gap: clamp(4px, .6vw, 8px);
+    padding-top: 3px;
     min-height: 0;
   }}
   .row {{
@@ -323,12 +323,12 @@ def build_html(bookings: list, start_dt: datetime.datetime, end_dt: datetime.dat
     min-height: 0;
   }}
   .label {{
-    width: clamp(180px, 16vw, 280px);
-    min-width: clamp(180px, 16vw, 280px);
+    width: clamp(150px, 13vw, 230px);
+    min-width: clamp(150px, 13vw, 230px);
     display: flex;
     align-items: center;
-    gap: 14px;
-    padding-right: 16px;
+    gap: 10px;
+    padding-right: 12px;
   }}
   .swatch {{
     width: 8px;
@@ -340,7 +340,7 @@ def build_html(bookings: list, start_dt: datetime.datetime, end_dt: datetime.dat
   .label-1 {{
     font-family: var(--display);
     font-weight: 900;
-    font-size: clamp(1.1rem, 1.5vw, 1.55rem);
+    font-size: clamp(.95rem, 1.2vw, 1.25rem);
     color: var(--green-deep);
     letter-spacing: -.01em;
   }}
@@ -349,9 +349,9 @@ def build_html(bookings: list, start_dt: datetime.datetime, end_dt: datetime.dat
     font-family: var(--display);
     font-weight: 500;
     font-style: italic;
-    font-size: clamp(.85rem, 1.1vw, 1.15rem);
+    font-size: clamp(.75rem, .9vw, .95rem);
     color: var(--amber);
-    margin-top: 2px;
+    margin-top: 1px;
   }}
   body.overnight .label-2 {{ color: var(--gold); }}
 
@@ -375,47 +375,51 @@ def build_html(bookings: list, start_dt: datetime.datetime, end_dt: datetime.dat
   body.overnight .hour-line {{ background: rgba(255,253,248,.08); }}
   .block {{
     position: absolute;
-    top: 6px;
-    bottom: 6px;
-    border-radius: 10px;
+    top: 4px;
+    bottom: 4px;
+    border-radius: 8px;
     display: flex;
     flex-direction: column;
     justify-content: center;
-    padding: 6px 14px;
+    padding: 4px 10px;
     overflow: hidden;
     min-width: 4px;
     color: #FFFDF8;
+    gap: 2px;
   }}
   .block-title {{
     font-family: var(--display);
     font-weight: 900;
-    font-size: clamp(1rem, 1.35vw, 1.45rem);
-    line-height: 1.05;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
+    font-size: clamp(.9rem, 1.1vw, 1.2rem);
+    line-height: 1.08;
     letter-spacing: -.01em;
     text-shadow: 0 1px 2px rgba(0,0,0,.25);
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    word-break: break-word;
   }}
   .block-time {{
     font-family: var(--body);
     font-weight: 600;
-    font-size: clamp(.75rem, .95vw, 1rem);
+    font-size: clamp(.7rem, .85vw, .9rem);
     letter-spacing: .02em;
     color: rgba(255,253,248,.92);
-    margin-top: 2px;
     white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }}
   .empty {{
     position: absolute;
     inset: 0;
     display: flex;
     align-items: center;
-    padding-left: 16px;
+    padding-left: 14px;
     font-family: var(--display);
     font-style: italic;
     font-weight: 500;
-    font-size: clamp(.85rem, 1.05vw, 1.1rem);
+    font-size: clamp(.75rem, .9vw, .95rem);
     color: var(--ink-soft);
   }}
   body.overnight .empty {{ color: #CFC9BA; }}
@@ -423,7 +427,7 @@ def build_html(bookings: list, start_dt: datetime.datetime, end_dt: datetime.dat
   footer {{
     flex-shrink: 0;
     text-align: center;
-    margin-top: clamp(14px, 1.6vw, 22px);
+    margin-top: clamp(6px, .8vw, 12px);
     color: var(--ink-soft);
   }}
   footer .mark {{
@@ -431,16 +435,16 @@ def build_html(bookings: list, start_dt: datetime.datetime, end_dt: datetime.dat
     font-weight: 900;
     letter-spacing: .12em;
     color: var(--green-deep);
-    font-size: clamp(.95rem, 1.1vw, 1.15rem);
+    font-size: clamp(.8rem, .9vw, .95rem);
   }}
   body.overnight footer .mark {{ color: #FFFDF8; }}
   footer .tag {{
     letter-spacing: .32em;
     text-transform: uppercase;
-    font-size: clamp(.65rem, .75vw, .8rem);
+    font-size: clamp(.55rem, .65vw, .7rem);
     color: var(--amber);
     font-weight: 600;
-    margin-top: 4px;
+    margin-top: 2px;
   }}
   body.overnight footer .tag {{ color: var(--gold); }}
 </style>
